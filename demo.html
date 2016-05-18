@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta content="yes" name="apple-mobile-web-app-capable">
+  <meta content="yes" name="apple-touch-fullscreen">
+  <meta content="telephone=no,email=no" name="format-detection">
+  <meta name="viewport"
+        content="width=device-width,initial-scale=1,user-scalable=no">
+  <title>分享</title>
+</head>
+<body>
+
+<script src="//res.wx.qq.com/open/js/jweixin-1.0.0.js"></script>
+<script>
+
+  /**
+   * 微信分享
+   * 原理:
+   * 1. 请求微信公众号绑定的域名获取appid 等信息, 如果是不同域下 需要进行跨域设置 e.g. cors jsonp
+   * 2. 执行wx.config 通过config接口注入权限验证配置(获取调用各种微信接口的权限)
+   * 3. wx.ready()中设置 获取权限成功之后的逻辑(绑定我们的分享设置等等)
+   */
+  window.__wxReady = false;
+  //配置参数
+  window.shareConfig = {
+    url: '//m.jdpay.com/open/ticketSignature',// 以双斜杠开头的依赖url 请求的时候 会使用当前页面的协议 获取签名的地址
+    imgUrl: 'http://img13.360buyimg.com/cms/jfs/t790/61/1403238732/5911/2dcd4cf2/559f6b56Na06dce77.png',
+    shareUrl: location.href,
+    title: document.title,
+    desc: document.title
+  };
+  /**
+   * 设置分享
+   * @param config
+   * {
+ * tokenUrl:'',
+ * title: '',
+ * desc:'',
+ * img:''
+ * }
+   */
+  function weixin(config) {
+    var settings = {
+      getTokenUrl: config.tokenUrl || shareConfig.url,
+      url: config.url || shareConfig.shareUrl,
+      title: config.title || shareConfig.title,
+      desc: config.desc || shareConfig.desc,
+      imgUrl: config.img || shareConfig.imgUrl
+    }
+    //jsonp 回调函数
+    window.jsonpcallback = function (data) {
+      try {
+        wx.config({
+          debug: true,// 开启调试模式,调用的所有api的返回值会在客户端alert出来，若要查看传入的参数，可以在pc端打开，参数信息会通过log打出，仅在pc端时才会打印。
+          appId: data.resultData.appId,
+          timestamp: data.resultData.timestamp,
+          nonceStr: data.resultData.nonceStr,
+          signature: data.resultData.signature,
+          jsApiList: ['onMenuShareTimeline', 'onMenuShareAppMessage', 'onMenuShareQQ']
+        });
+        wx.ready(function () {
+          setShareInfo();
+          __wxReady = true;
+        });
+      } catch (e) {
+
+      }
+    };
+
+    function sendJsonp() {
+      var params = {
+        url: settings.url,//传入需要分享的链接
+        callback: "jsonpcallback"
+      };
+      var codeSearch = function (params) {
+            var str = '';
+            for (var i in params) {
+              //这里的判断 有一个隐式转换 内部是直接 Boolean(str)=>false
+              if (str) {
+                str += '&' + i + '=' + encodeURIComponent(params[i]);
+              } else {
+                str += '?' + i + '=' + encodeURIComponent(params[i]);
+              }
+            }
+            return str;
+          },
+          script = null;
+      script = document.createElement('script');
+      script.src = settings.getTokenUrl + codeSearch(params);
+      script.async = 'async';
+      document.head.appendChild(script);
+    }
+
+    /**
+     * 绑定分享事件
+     * 1. 分享到朋友圈没有描述 desc
+     */
+    function setShareInfo() {
+      //分享到朋友圈
+      wx.onMenuShareTimeline({
+        title: settings.title,
+        link: settings.url,
+        imgUrl: settings.imgUrl,
+        success: function () {
+        },
+        cancel: function () {
+        }
+      })
+      //分享给好友
+      wx.onMenuShareAppMessage({
+        title: settings.title,
+        desc: settings.desc, // 分享描述
+        link: settings.url, // 分享链接
+        imgUrl: settings.imgUrl,
+        type: '', // 分享类型,music、video或link，不填默认为link
+        dataUrl: '', // 如果type是music或video，则要提供数据链接，默认为空
+        success: function () {
+          // 用户确认分享后执行的回调函数
+        },
+        cancel: function () {
+          // 用户取消分享后执行的回调函数
+        }
+      });
+      //分享到qq
+      wx.onMenuShareQQ({
+        title: settings.title, // 分享标题
+        desc: settings.desc, // 分享描述
+        link: settings.url, // 分享链接
+        imgUrl: settings.imgUrl, // 分享图标
+        success: function () {
+          // 用户确认分享后执行的回调函数
+        },
+        cancel: function () {
+          // 用户取消分享后执行的回调函数
+        }
+      });
+    }
+
+    __wxReady ? setShareInfo() : sendJsonp();
+  }
+
+
+  // transport
+  if (typeof define === 'function' && define.amd) {
+    // AMD
+    define({
+      weixin: weixin
+    });
+  } else if (typeof exports === 'object') {
+    // CommonJS
+    module.exports = weixin;
+  } else {
+    // browser global
+    window.weixin = weixin;
+  }
+</script>
+
+<button type="button" id="share">分享</button>
+
+<script>
+  weixin({
+    "url": location.href,
+    "title": '分享标题',
+    "desc": '分享描述'
+  });
+
+</script>
+</body>
+</html>
